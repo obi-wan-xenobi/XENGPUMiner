@@ -314,6 +314,11 @@ def mine_block(stored_targets, prev_hash, address):
                         if capital_count >= 65:
                             print(f"{RED}Superblock found{RESET}")
                         break
+                    # Check for the pattern "XENOBI" followed by a digit (0-9)
+                    elif re.search("XENOBI[0-9]", hashed_data):
+                        found_valid_hash = True
+                        target = "XENOBI" 
+                        break
                     else:
                         found_valid_hash = False
                         break
@@ -347,22 +352,23 @@ def mine_block(stored_targets, prev_hash, address):
     retries = 0
 
     while retries <= max_retries:
-        try:
-            # Make the POST request
-            response = requests.post('http://xenblocks.io/verify', json=payload, timeout=10)
+        # Make the POST request
+        response = requests.post('http://xenblocks.io/verify', json=payload)
 
-            # Print the HTTP status code
-            print("HTTP Status Code:", response.status_code)
-            # Print the server's response
+        # Print the HTTP status code
+        print("HTTP Status Code:", response.status_code)
+
+        if target == "XEN11" and found_valid_hash and response.status_code == 200:
+            #submit proof of work validation of last sealed block
+            submit_pow(account, random_data, hashed_data)
+
+        if target == "XENOBI" and found_valid_hash and response.status_code == 200:
+            #submit proof of work validation of last sealed block
+            submit_pow(account, random_data, hashed_data)
+
+        if response.status_code != 500:  # If status code is not 500, break the loop
             print("Server Response:", response.json())
-
-            if target == "XEN11" and found_valid_hash and response.status_code == 200:
-                #submit proof of work validation of last sealed block
-                submit_pow(account, random_data, hashed_data)
-                break
-            if response.status_code != 500:  # If status code is not 500, break the loop
-                print("Server Response:", response.json())
-                break
+            break
 
             retries += 1
             print(f"Retrying... ({retries}/{max_retries})")
@@ -377,6 +383,7 @@ def mine_block(stored_targets, prev_hash, address):
 normal_blocks_count = 0
 super_blocks_count = 0
 xuni_blocks_count = 0
+xenobi_blocks_count = 0
 def submit_block(key, account):
     global updated_memory_cost  # Make it global so that we can update it
     found_valid_hash = False
@@ -384,6 +391,7 @@ def submit_block(key, account):
     global normal_blocks_count
     global super_blocks_count
     global xuni_blocks_count
+    global xenobi_blocks_count
 
     remove_prefix_address = account[2:]
     salt = bytes.fromhex(remove_prefix_address)
@@ -402,21 +410,25 @@ def submit_block(key, account):
 
     for target in stored_targets:
 
-        if target in only_hashed_data:
-        # Search for the pattern "XUNI" followed by a digit (0-9)
-            if re.search("XUNI[0-9]", only_hashed_data) and is_within_five_minutes_of_hour():
-                found_valid_hash = True
-                break
-            elif target == "XEN11":
-                found_valid_hash = True
-                capital_count = sum(1 for char in re.sub('[0-9]', '', only_hashed_data) if char.isupper())
-                if capital_count >= 50:
-                    isSuperblock = True
-                    print(f"{RED}Superblock found{RESET}")
-                break
-            else:
-                found_valid_hash = False
-                break
+        if target in hashed_data[-87:]:
+                # Search for the pattern "XUNI" followed by a digit (0-9)
+                    if re.search("XUNI[0-9]", hashed_data) and is_within_five_minutes_of_hour():
+                        found_valid_hash = True
+                        break
+                    elif target == "XEN11":
+                        found_valid_hash = True
+                        capital_count = sum(1 for char in re.sub('[0-9]', '', hashed_data) if char.isupper())
+                        if capital_count >= 65:
+                            print(f"{RED}Superblock found{RESET}")
+                        break
+                    # Check for the pattern "XENOBI" followed by a digit (0-9)
+                    elif re.search("XENOBI[0-9]", hashed_data):
+                        found_valid_hash = True
+                        target = "XENOBI" 
+                        break
+                    else:
+                        found_valid_hash = False
+                        break
 
     if found_valid_hash:
         print(f"\n{RED}Found valid hash for target {target}{RESET}")
@@ -461,6 +473,9 @@ def submit_block(key, account):
                             super_blocks_count += 1
                         else:
                             normal_blocks_count += 1
+                    elif "XENOBI" in only_hashed_data:
+                        xenobi_blocks_count += 1
+                        break
                 if target == "XEN11" and found_valid_hash and response.status_code == 200:
                     #submit proof of work validation of last sealed block
                     submit_pow(account, key, hashed_data)
@@ -535,6 +550,7 @@ def monitor_blocks_directory(account):
     global normal_blocks_count
     global super_blocks_count
     global xuni_blocks_count
+    global xenobi_blocks_count
     global memory_cost
     global running
     with tqdm(total=None, dynamic_ncols=True, desc=f"{GREEN}Mining{RESET}", unit=f" {GREEN}Blocks{RESET}") as pbar:
@@ -555,19 +571,22 @@ def monitor_blocks_directory(account):
                     os.remove(filepath)
                 superblock = f"{RED}super:{super_blocks_count}{RESET} "
                 block = f"{GREEN}normal:{normal_blocks_count}{RESET} "
-                xuni = f"{BLUE}xuni:{xuni_blocks_count}{RESET} "
+                xuni = f"{GREEN}xuni:{xuni_blocks_count}{RESET} "
+                xenobi = f"{YELLOW}xenobi:{xenobi_blocks_count}{RESET} "
                 if(super_blocks_count == 0):
                     superblock = ""
                 if(normal_blocks_count == 0):
                     block = ""
                 if(xuni_blocks_count == 0):
                     xuni = ""
-                if super_blocks_count == 0 and normal_blocks_count == 0 and xuni_blocks_count == 0:
-                    pbar.set_postfix({"Stat":f"Active:{BLUE}{active_processes}{RESET}, HashRate:{BLUE}{total_hash_rate:.2f}{RESET}h/s", 
+                if(xenobi_blocks_count == 0):
+                    xenobi = ""
+                if super_blocks_count == 0 and normal_blocks_count == 0 and xuni_blocks_count == 0 and xenobi_blocks_count == 0:
+                    pbar.set_postfix({"Stat":f"Active:{GREEN}{active_processes}{RESET}, HashRate:{YELLOW}{total_hash_rate:.2f}{RESET}h/s", 
                                     "Difficulty":f"{YELLOW}{memory_cost}{RESET}"}, refresh=True)
                 else:
-                    pbar.set_postfix({"Details": f"{superblock}{block}{xuni}", 
-                                    "Stat":f"Active:{BLUE}{active_processes}{RESET}, HashRate:{BLUE}{total_hash_rate:.2f}{RESET}h/s", 
+                    pbar.set_postfix({"Details": f"{superblock}{block}{xuni}{xenobi}", 
+                                    "Stat":f"Active:{GREEN}{active_processes}{RESET}, HashRate:{YELLOW}{total_hash_rate:.2f}{RESET}h/s", 
                                     "Difficulty":f"{YELLOW}{memory_cost}{RESET}"}, refresh=True)
 
                 time.sleep(1)
@@ -577,7 +596,7 @@ def monitor_blocks_directory(account):
 
 if __name__ == "__main__":
     blockchain = []
-    stored_targets = ['XEN11', 'XUNI']
+    stored_targets = ['XEN11', 'XUNI','XENOBI']
     num_blocks_to_mine = 20000000
     global running
     running = True
