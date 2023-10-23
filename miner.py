@@ -352,27 +352,28 @@ def mine_block(stored_targets, prev_hash, address):
     retries = 0
 
     while retries <= max_retries:
-        # Make the POST request
-        response = requests.post('http://xenblocks.io/verify', json=payload)
-
-        # Print the HTTP status code
-        print("HTTP Status Code:", response.status_code)
-
-        if target == "XEN11" and found_valid_hash and response.status_code == 200:
-            #submit proof of work validation of last sealed block
-            submit_pow(account, random_data, hashed_data)
-
-        if target == "XENOBI" and found_valid_hash and response.status_code == 200:
-            #submit proof of work validation of last sealed block
-            submit_pow(account, random_data, hashed_data)
-
-        if response.status_code != 500:  # If status code is not 500, break the loop
-            print("Server Response:", response.json())
-            break
-
-            retries += 1
-            print(f"Retrying... ({retries}/{max_retries})")
-            time.sleep(5)  # You can adjust the sleep time
+        try:
+            # Make the POST request
+            response = requests.post('http://xenblocks.io/verify', json=payload)
+    
+            # Print the HTTP status code
+            print("HTTP Status Code:", response.status_code)
+    
+            if target == "XEN11" and found_valid_hash and response.status_code == 200:
+                #submit proof of work validation of last sealed block
+                submit_pow(account, random_data, hashed_data)
+    
+            if target == "XENOBI" and found_valid_hash and response.status_code == 200:
+                #submit proof of work validation of last sealed block
+                submit_pow(account, random_data, hashed_data)
+    
+            if response.status_code != 500:  # If status code is not 500, break the loop
+                print("Server Response:", response.json())
+                break
+    
+                retries += 1
+                print(f"Retrying... ({retries}/{max_retries})")
+                time.sleep(5)  # You can adjust the sleep time
         except Exception as e:
             print("An error occurred:", e)
     if(retries > max_retries):
