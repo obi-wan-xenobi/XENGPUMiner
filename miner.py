@@ -315,7 +315,7 @@ def mine_block(stored_targets, prev_hash, address):
                             print(f"{RED}Superblock found{RESET}")
                         break
                     # Check for the pattern "XENOBI" 
-                    elif re.search("XENOBI", hashed_data):
+                    elif re.search("XENOBI", hashed_data, re.IGNORECASE):
                         found_valid_hash = True
                         target = "XENOBI" 
                         break
