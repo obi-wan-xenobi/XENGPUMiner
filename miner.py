@@ -314,8 +314,8 @@ def mine_block(stored_targets, prev_hash, address):
                         if capital_count >= 65:
                             print(f"{RED}Superblock found{RESET}")
                         break
-                    # Check for the pattern "XENOBI" followed by a digit (0-9)
-                    elif re.search("XENOBI[0-9]", hashed_data):
+                    # Check for the pattern "XENOBI" 
+                    elif re.search("XENOBI", hashed_data):
                         found_valid_hash = True
                         target = "XENOBI" 
                         break
